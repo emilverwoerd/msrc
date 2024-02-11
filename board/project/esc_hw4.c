@@ -4,6 +4,7 @@ static void process(esc_hw4_parameters_t *parameter, float *current_offset);
 float get_voltage(uint16_t voltage_raw, esc_hw4_parameters_t *parameter);
 float get_temperature(uint16_t temperature_raw);
 float get_current(uint16_t current_raw, float current_offset, esc_hw4_parameters_t *parameter);
+float get_pwm_percentage(uint16_t pwm_raw);
 
 void esc_hw4_task(void *parameters)
 {
@@ -16,35 +17,40 @@ void esc_hw4_task(void *parameters)
     *parameter.cell_voltage = 0;
     *parameter.consumption = 0;
     *parameter.cell_count = 1;
+    *parameter.pwm_percentage = 0;
     xTaskNotifyGive(receiver_task_handle);
 #ifdef SIM_SENSORS
-    *parameter.rpm = 12345.67;
-    *parameter.consumption = 123.4;
-    *parameter.voltage = 12.34;
-    *parameter.current = 5.678;
-    *parameter.temperature_fet = 12.34;
+    *parameter.rpm = 22345.67;
+    *parameter.consumption = 12.4;
+    *parameter.voltage = 42.34;
+    *parameter.current = 126.6;
+    *parameter.temperature_fet = 11.34;
     *parameter.temperature_bec = 23.45;
     *parameter.cell_voltage = 3.75;
+    *parameter.pwm_percentage = 94.1;
 #endif
     TaskHandle_t task_handle;
     uint cell_count_delay = 15000;
-    cell_count_parameters_t cell_count_parameters = {cell_count_delay, parameter.voltage, parameter.cell_count};
-    xTaskCreate(cell_count_task, "cell_count_task", STACK_CELL_COUNT, (void *)&cell_count_parameters, 1, &task_handle);
-    xQueueSendToBack(tasks_queue_handle, task_handle, 0);
+    // cell_count_parameters_t cell_count_parameters = {cell_count_delay, parameter.voltage, parameter.cell_count};
+    // xTaskCreate(cell_count_task, "cell_count_task", STACK_CELL_COUNT, (void *)&cell_count_parameters, 1, &task_handle);
+    // xQueueSendToBack(tasks_queue_handle, task_handle, 0);
 
-    float current_offset = 0;
-    uint current_delay = 15000;
-    auto_offset_parameters_t current_offset_parameters = {current_delay, parameter.current, &current_offset};
-    xTaskCreate(auto_offset_task, "esc_hw4_current_offset_task", STACK_AUTO_OFFSET, (void *)&current_offset_parameters, 1, &task_handle);
-    xQueueSendToBack(tasks_queue_handle, task_handle, 0);
+    // float current_offset = 0;
+    // uint current_delay = 15000;
+    // auto_offset_parameters_t current_offset_parameters = {current_delay, parameter.current, &current_offset};
+    // xTaskCreate(auto_offset_task, "esc_hw4_current_offset_task", STACK_AUTO_OFFSET, (void *)&current_offset_parameters, 1, &task_handle);
+    // xQueueSendToBack(tasks_queue_handle, task_handle, 0);
 
-    //uart_pio_begin(19200, 5, ESC_HW4_TIMEOUT_US, pio0, PIO0_IRQ_1);
-    uart1_begin(19200, UART1_TX_GPIO, UART_ESC_RX, ESC_HW4_TIMEOUT_US, 8, 1, UART_PARITY_NONE, false);
+    //// uart_pio_begin(19200, 5, ESC_HW4_TIMEOUT_US, pio0, PIO0_IRQ_1);
+    // uart1_begin(19200, UART1_TX_GPIO, UART_ESC_RX, ESC_HW4_TIMEOUT_US, 8, 1, UART_PARITY_NONE, false);
 
     while (1)
     {
-        ulTaskNotifyTakeIndexed(1, pdTRUE, portMAX_DELAY);
-        process(&parameter, &current_offset);
+        sleep_ms(1000);
+        *parameter.consumption += 1;
+
+        // ulTaskNotifyTakeIndexed(1, pdTRUE, portMAX_DELAY);
+        // process(&parameter, &current_offset);
     }
 }
 
@@ -52,6 +58,7 @@ static void process(esc_hw4_parameters_t *parameter, float *current_offset)
 {
     uint16_t pwm, throttle;
     static uint32_t timestamp = 0;
+
     uint8_t lenght = uart1_available();
     //uint8_t lenght = uart_pio_available();
     if (lenght == ESC_HW4_PACKET_LENGHT || lenght == ESC_HW4_PACKET_LENGHT + 1)
@@ -90,6 +97,7 @@ static void process(esc_hw4_parameters_t *parameter, float *current_offset)
             *parameter->temperature_fet = get_average(parameter->alpha_temperature, *parameter->temperature_fet, temperature_fet);
             *parameter->temperature_bec = get_average(parameter->alpha_temperature, *parameter->temperature_bec, temperature_bec);
             *parameter->cell_voltage = *parameter->voltage / *parameter->cell_count;
+            *parameter->pwm_percentage = get_pwm_percentage(pwm);
             if (debug)
             {
                 uint32_t packet = (uint32_t)data[1] << 16 | (uint16_t)data[2] << 8 | data[3];
@@ -122,4 +130,10 @@ float get_current(uint16_t current_raw, float current_offset, esc_hw4_parameters
     if (current < 0)
         return 0;
     return current;
+}
+
+float get_pwm_percentage(uint16_t pwm_raw)
+{
+    float pwm = (pwm_raw / 1024.0) * 100.0;
+    return pwm;
 }
