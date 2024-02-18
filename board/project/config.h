@@ -105,7 +105,7 @@
 #define MSRC_DEBUG 0  // 0 = no debug, 1 = debug level 1, 2 = debug level 2
 
 //#define SIM_RX
-#define SIM_SENSORS
+// #define SIM_SENSORS
 
 //#define SBUS_HOBBYWING_SENSOR
 #define SBUS_HOBBYWING_SENSOR

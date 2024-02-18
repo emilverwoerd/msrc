@@ -1,10 +1,20 @@
 #include "esc_hw4.h"
 
-static void process(esc_hw4_parameters_t *parameter, float *current_offset);
-float get_voltage(uint16_t voltage_raw, esc_hw4_parameters_t *parameter);
-float get_temperature(uint16_t temperature_raw);
-float get_current(uint16_t current_raw, float current_offset, esc_hw4_parameters_t *parameter);
-float get_pwm_percentage(uint16_t pwm_raw);
+static void process(esc_hw4_parameters_t *parameter);
+
+#define TELEMETRY_BUFFER_SIZE    40
+#define MOTOR_POLE_DIVISION      5
+
+static uint8_t buffer[TELEMETRY_BUFFER_SIZE] = { 0, };
+static uint8_t  readBytes = 0;
+static uint32_t syncCount = 0;
+
+static uint32_t dataUpdateUs = 0;
+static uint32_t consumptionUpdateUs = 0;
+
+static float consumptionDelta = 0.0f;
+static float totalConsumption = 0.0f;
+
 
 void esc_hw4_task(void *parameters)
 {
@@ -31,9 +41,9 @@ void esc_hw4_task(void *parameters)
 #endif
     TaskHandle_t task_handle;
     uint cell_count_delay = 15000;
-    // cell_count_parameters_t cell_count_parameters = {cell_count_delay, parameter.voltage, parameter.cell_count};
-    // xTaskCreate(cell_count_task, "cell_count_task", STACK_CELL_COUNT, (void *)&cell_count_parameters, 1, &task_handle);
-    // xQueueSendToBack(tasks_queue_handle, task_handle, 0);
+    cell_count_parameters_t cell_count_parameters = {cell_count_delay, parameter.voltage, parameter.cell_count};
+    xTaskCreate(cell_count_task, "cell_count_task", STACK_CELL_COUNT, (void *)&cell_count_parameters, 1, &task_handle);
+    xQueueSendToBack(tasks_queue_handle, task_handle, 0);
 
     // float current_offset = 0;
     // uint current_delay = 15000;
@@ -41,99 +51,262 @@ void esc_hw4_task(void *parameters)
     // xTaskCreate(auto_offset_task, "esc_hw4_current_offset_task", STACK_AUTO_OFFSET, (void *)&current_offset_parameters, 1, &task_handle);
     // xQueueSendToBack(tasks_queue_handle, task_handle, 0);
 
-    //// uart_pio_begin(19200, 5, ESC_HW4_TIMEOUT_US, pio0, PIO0_IRQ_1);
-    // uart1_begin(19200, UART1_TX_GPIO, UART_ESC_RX, ESC_HW4_TIMEOUT_US, 8, 1, UART_PARITY_NONE, false);
+   // uart_pio_begin(19200, UART_ESC_RX, ESC_HW4_TIMEOUT_US, pio0, PIO0_IRQ_1);
+   // uart1_begin(19200, UART1_TX_GPIO, UART_ESC_RX, ESC_HW4_TIMEOUT_US, 8, 1, UART_PARITY_NONE, false);
+    uart1_begin(115200, 8, 9, ESC_HW4_TIMEOUT_US, 8, 1, UART_PARITY_NONE, false);
 
     while (1)
     {
-        sleep_ms(1000);
-        *parameter.consumption += 1;
-
-        // ulTaskNotifyTakeIndexed(1, pdTRUE, portMAX_DELAY);
-        // process(&parameter, &current_offset);
+        ulTaskNotifyTakeIndexed(1, pdTRUE, portMAX_DELAY);
+        process(&parameter);
     }
 }
 
-static void process(esc_hw4_parameters_t *parameter, float *current_offset)
+static uint16_t calculateCRC16_MODBUS(const uint8_t *ptr, size_t len)
 {
-    uint16_t pwm, throttle;
-    static uint32_t timestamp = 0;
+    uint16_t crc = ~0;
 
-    uint8_t lenght = uart1_available();
-    //uint8_t lenght = uart_pio_available();
-    if (lenght == ESC_HW4_PACKET_LENGHT || lenght == ESC_HW4_PACKET_LENGHT + 1)
-    {
-        uint8_t data[ESC_HW4_PACKET_LENGHT];
-        uart1_read_bytes(data, ESC_HW4_PACKET_LENGHT);
-        //uart_pio_read_bytes(data, ESC_HW4_PACKET_LENGHT);
-        throttle = (uint16_t)data[4] << 8 | data[5]; // 0-1024
-        pwm = (uint16_t)data[6] << 8 | data[7];      // 0-1024
-        float rpm = (uint32_t)data[8] << 16 | (uint16_t)data[9] << 8 | data[10];
-        // try to filter invalid data frames
-        if (throttle < 1024 &&
-            pwm < 1024 &&
-            rpm < 200000 &&
-            data[11] < 0xF &&
-            data[13] < 0xF &&
-            data[15] < 0xF &&
-            data[17] < 0xF)
-        {
-            uint16_t current_raw = (uint16_t)data[13] << 8 | data[14];
-            float voltage = get_voltage((uint16_t)data[11] << 8 | data[12], parameter);
-            float current = 0;
-            if (throttle > parameter->current_thresold / 100.0 * 1024)
-                current = get_current(current_raw, *current_offset, parameter);
-            if (current > parameter->current_max)
-                current = 0;
-            float temperature_fet = get_temperature((uint16_t)data[15] << 8 | data[16]);
-            float temperature_bec = get_temperature((uint16_t)data[17] << 8 | data[18]);
-            rpm *= parameter->rpm_multiplier;
-            if (parameter->pwm_out)
-                xTaskNotifyGive(pwm_out_task_handle);
-            *parameter->rpm = get_average(parameter->alpha_rpm, *parameter->rpm, rpm);
-            *parameter->consumption += get_consumption(*parameter->current, parameter->current_max, &timestamp);
-            *parameter->voltage = get_average(parameter->alpha_voltage, *parameter->voltage, voltage);
-            *parameter->current = get_average(parameter->alpha_current, *parameter->current, current);
-            *parameter->temperature_fet = get_average(parameter->alpha_temperature, *parameter->temperature_fet, temperature_fet);
-            *parameter->temperature_bec = get_average(parameter->alpha_temperature, *parameter->temperature_bec, temperature_bec);
-            *parameter->cell_voltage = *parameter->voltage / *parameter->cell_count;
-            *parameter->pwm_percentage = get_pwm_percentage(pwm);
-            if (debug)
-            {
-                uint32_t packet = (uint32_t)data[1] << 16 | (uint16_t)data[2] << 8 | data[3];
-                printf("\nEsc HW4 (%u) < Packet: %i Rpm: %.0f Volt: %0.2f Curr: %.2f TempFet: %.0f TempBec: %.0f Cons: %.0f CellV: %.2f", uxTaskGetStackHighWaterMark(NULL), packet, *parameter->rpm, *parameter->voltage, *parameter->current, *parameter->temperature_fet, *parameter->temperature_bec, *parameter->consumption, *parameter->cell_voltage);
+    while (len--) {
+        crc ^= *ptr++;
+        for (int i = 0; i < 8; i++)
+            crc = (crc & 1) ? (crc >> 1) ^ 0xA001 : (crc >> 1);
+    }
+
+    return crc;
+}
+
+static void frameSyncError(void)
+{
+    readBytes = 0;
+}
+
+static bool processHW5TelemetryStream(uint8_t dataByte)
+{
+    buffer[readBytes++] = dataByte;
+
+    if (readBytes == 1) {
+        if (dataByte != 0xFE)
+            frameSyncError();
+    }
+    else if (readBytes == 2) {
+        if (dataByte != 0x01)
+            frameSyncError();
+    }
+    else if (readBytes == 3) {
+        if (dataByte != 0x00)
+            frameSyncError();
+    }
+    else if (readBytes == 4) {
+        if (dataByte != 0x03)
+            frameSyncError();
+    }
+    else if (readBytes == 5) {
+        if (dataByte != 0x30)
+            frameSyncError();
+    }
+    else if (readBytes == 6) {
+        if (dataByte != 0x5C)
+            frameSyncError();
+    }
+    else if (readBytes == 7) {
+        if (dataByte != 0x17)
+            frameSyncError();
+    }
+    else if (readBytes == 32) {
+        readBytes = 0;
+        return true;
+    }
+
+    return false;
+}
+
+static int32_t cmpTimeUs(uint32_t a, uint32_t b) 
+{ 
+    return (int32_t)(a - b); 
+}
+
+// Only for non-BLHeli32 protocols with single ESC support
+static void checkFrameTimeout(uint32_t currentTimeUs, int32_t timeout)
+{
+    // Increment data age counter if no updates
+    if (cmpTimeUs(currentTimeUs, dataUpdateUs) > timeout) {
+        dataUpdateUs = currentTimeUs;
+    }
+}
+
+static void setConsumptionCurrent(float current)
+{
+    // Pre-convert Aµs to mAh
+    consumptionDelta = current * (1000.0f / 3600e6f);
+}
+
+static void updateConsumption(uint32_t currentTimeUs)
+{
+    // Increment consumption
+    totalConsumption += cmpTimeUs(currentTimeUs, consumptionUpdateUs) * consumptionDelta;
+
+    // Save update time
+    consumptionUpdateUs = currentTimeUs;
+
+    // escSensorData[0].consumption = totalConsumption;
+}
+
+
+static void process(esc_hw4_parameters_t *parameter)
+{
+    uint32_t currentTimeUs = time_us_32();
+
+    // check for any available bytes in the rx buffer
+    while (uart1_available()) {
+        if (processHW5TelemetryStream(uart1_read())) {
+            uint16_t crc = buffer[31] << 8 | buffer[30];
+
+            if (calculateCRC16_MODBUS(buffer, 30) == crc) {
+                uint32_t rpm = buffer[14] << 8 | buffer[13];
+                uint16_t power = buffer[9];
+                uint16_t voltage = buffer[16] << 8 | buffer[15];
+                uint16_t current = buffer[18] << 8 | buffer[17];
+                uint16_t tempFET = buffer[19];
+                uint16_t tempBEC = buffer[20];                               
+
+                // When throttle changes to zero, the last current reading is
+                // repeated until the motor has totally stopped.
+                if (power == 0) {
+                    current = 0;
+                }
+
+                setConsumptionCurrent(current * 0.1f);
+
+                printf("Voltage ");
+                printf("%.2f" , voltage * 0.1);
+                printf("\n");
+
+                printf("Current ");
+                printf("%.2f" , current * 1.0);
+                printf("\n");
+
+                printf("Temp FET ");
+                printf("%.2f" , tempFET * 1.0);
+                printf("\n");
+                
+                printf("Temp BEC ");
+                printf("%.2f" , tempBEC * 1.0);
+                printf("\n");
+
+                // printf("Voltage BEC ");
+                // printf("%.2f" , voltageBEC * 1.0);
+                // printf("\n");
+                printf("\n");
+                // escSensorData[0].age = 0;
+                // escSensorData[0].erpm = rpm * 10;
+                // escSensorData[0].pwm = power * 10;
+                // escSensorData[0].voltage = voltage * 100;
+                // escSensorData[0].current = current * 100;
+                // escSensorData[0].temperature = tempFET * 10;
+                // escSensorData[0].temperature2 = tempBEC * 10;
+
+                // DEBUG(ESC_SENSOR, DEBUG_ESC_1_RPM, rpm * 10);
+                // DEBUG(ESC_SENSOR, DEBUG_ESC_1_TEMP, tempFET * 10);
+                // DEBUG(ESC_SENSOR, DEBUG_ESC_1_VOLTAGE, voltage * 10);
+                // DEBUG(ESC_SENSOR, DEBUG_ESC_1_CURRENT, current * 10);
+
+                // DEBUG(ESC_SENSOR_DATA, DEBUG_DATA_RPM, rpm);
+                // DEBUG(ESC_SENSOR_DATA, DEBUG_DATA_PWM, power);
+                // DEBUG(ESC_SENSOR_DATA, DEBUG_DATA_TEMP, tempFET);
+                // DEBUG(ESC_SENSOR_DATA, DEBUG_DATA_VOLTAGE, voltage);
+                // DEBUG(ESC_SENSOR_DATA, DEBUG_DATA_CURRENT, current);
+                // DEBUG(ESC_SENSOR_DATA, DEBUG_DATA_EXTRA, tempBEC);
+                // DEBUG(ESC_SENSOR_DATA, DEBUG_DATA_AGE, 0);
+
+                *parameter->rpm = (rpm * 10.0) / MOTOR_POLE_DIVISION;
+                *parameter->consumption = totalConsumption;
+                *parameter->voltage = voltage * 0.1;
+                *parameter->current = current * 0.1;;
+                *parameter->temperature_fet = tempFET * 1.0;
+                *parameter->temperature_bec = 0;
+                *parameter->cell_voltage = *parameter->voltage / *parameter->cell_count;
+                *parameter->pwm_percentage = power * 1.0;
+
+                dataUpdateUs = currentTimeUs;
             }
         }
     }
+
+    // Update consumption on every cycle
+    updateConsumption(currentTimeUs);
+
+    // Maximum frame spacing 400ms
+    checkFrameTimeout(currentTimeUs, 500000);
 }
 
-float get_voltage(uint16_t voltage_raw, esc_hw4_parameters_t *parameter)
-{
-    return ESC_HW4_V_REF * voltage_raw / ESC_HW4_ADC_RES * parameter->divisor;
-}
 
-float get_temperature(uint16_t temperature_raw)
-{
-    float voltage = temperature_raw * ESC_HW4_V_REF / ESC_HW4_ADC_RES;
-    float ntcR_Rref = (voltage * ESC_HW4_NTC_R1 / (ESC_HW4_V_REF - voltage)) / ESC_HW4_NTC_R_REF;
-    if (ntcR_Rref < 0.001)
-        return 0;
-    float temperature = 1 / (log(ntcR_Rref) / ESC_HW4_NTC_BETA + 1 / 298.15) - 273.15;
-    if (temperature < 0)
-        return 0;
-    return temperature;
-}
+// static void process(esc_hw4_parameters_t *parameter, float *current_offset)
+// {
+//     uint16_t pwm, throttle;
+//     static uint32_t timestamp = 0;
 
-float get_current(uint16_t current_raw, float current_offset, esc_hw4_parameters_t *parameter)
-{
-    float current = current_raw * ESC_HW4_V_REF / (parameter->ampgain * ESC_HW4_DIFFAMP_SHUNT * ESC_HW4_ADC_RES) - current_offset;
-    if (current < 0)
-        return 0;
-    return current;
-}
+//     hw5SensorProcess();
+//     // uint8_t lenght = uart1_available();
 
-float get_pwm_percentage(uint16_t pwm_raw)
-{
-    float pwm = (pwm_raw / 1024.0) * 100.0;
-    return pwm;
-}
+
+//     //  if (lenght > 0)
+//     //  {
+//     //     uint8_t test = uart1_read();
+        
+//     //     if (test != 0xFA)
+//     //     {
+//     //         printf("%X ", test);  
+//     //     }
+//     //     else
+//     //     {
+//     //         printf("\n");
+//     //     }
+
+//     //  }
+
+    
+//     // if (lenght == ESC_HW4_PACKET_LENGHT || lenght == ESC_HW4_PACKET_LENGHT + 1)
+//     // {
+//     //     uint8_t data[ESC_HW4_PACKET_LENGHT];
+//     //     uart1_read_bytes(data, ESC_HW4_PACKET_LENGHT);
+//     //     //uart_pio_read_bytes(data, ESC_HW4_PACKET_LENGHT);
+//     //     throttle = (uint16_t)data[4] << 8 | data[5]; // 0-1024
+//     //     pwm = (uint16_t)data[6] << 8 | data[7];      // 0-1024
+//     //     float rpm = (uint32_t)data[8] << 16 | (uint16_t)data[9] << 8 | data[10];
+//     //     // try to filter invalid data frames
+//     //     if (throttle < 1024 &&
+//     //         pwm < 1024 &&
+//     //         rpm < 200000 &&
+//     //         data[11] < 0xF &&
+//     //         data[13] < 0xF &&
+//     //         data[15] < 0xF &&
+//     //         data[17] < 0xF)
+//     //     {
+//     //         uint16_t current_raw = (uint16_t)data[13] << 8 | data[14];
+//     //         float voltage = get_voltage((uint16_t)data[11] << 8 | data[12], parameter);
+//     //         float current = 0;
+//     //         if (throttle > parameter->current_thresold / 100.0 * 1024)
+//     //             current = get_current(current_raw, *current_offset, parameter);
+//     //         if (current > parameter->current_max)
+//     //             current = 0;
+//     //         float temperature_fet = get_temperature((uint16_t)data[15] << 8 | data[16]);
+//     //         float temperature_bec = get_temperature((uint16_t)data[17] << 8 | data[18]);
+//     //         rpm *= parameter->rpm_multiplier;
+//     //         if (parameter->pwm_out)
+//     //             xTaskNotifyGive(pwm_out_task_handle);
+//     //         *parameter->rpm = get_average(parameter->alpha_rpm, *parameter->rpm, rpm);
+//     //         *parameter->consumption += get_consumption(*parameter->current, parameter->current_max, &timestamp);
+//     //         *parameter->voltage = get_average(parameter->alpha_voltage, *parameter->voltage, voltage);
+//     //         *parameter->current = get_average(parameter->alpha_current, *parameter->current, current);
+//     //         *parameter->temperature_fet = get_average(parameter->alpha_temperature, *parameter->temperature_fet, temperature_fet);
+//     //         *parameter->temperature_bec = get_average(parameter->alpha_temperature, *parameter->temperature_bec, temperature_bec);
+//     //         *parameter->cell_voltage = *parameter->voltage / *parameter->cell_count;
+//     //         *parameter->pwm_percentage = get_pwm_percentage(pwm);
+//     //         if (debug)
+//     //         {
+//     //             uint32_t packet = (uint32_t)data[1] << 16 | (uint16_t)data[2] << 8 | data[3];
+//     //             printf("\nEsc HW4 (%u) < Packet: %i Rpm: %.0f Volt: %0.2f Curr: %.2f TempFet: %.0f TempBec: %.0f Cons: %.0f CellV: %.2f", uxTaskGetStackHighWaterMark(NULL), packet, *parameter->rpm, *parameter->voltage, *parameter->current, *parameter->temperature_fet, *parameter->temperature_bec, *parameter->consumption, *parameter->cell_voltage);
+//     //         }
+//     //     }
+//     // }
+// }
