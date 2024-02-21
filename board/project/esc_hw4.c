@@ -39,11 +39,11 @@ void esc_hw4_task(void *parameters)
     *parameter.cell_voltage = 3.75;
     *parameter.pwm_percentage = 94.1;
 #endif
-    TaskHandle_t task_handle;
-    uint cell_count_delay = 15000;
-    cell_count_parameters_t cell_count_parameters = {cell_count_delay, parameter.voltage, parameter.cell_count};
-    xTaskCreate(cell_count_task, "cell_count_task", STACK_CELL_COUNT, (void *)&cell_count_parameters, 1, &task_handle);
-    xQueueSendToBack(tasks_queue_handle, task_handle, 0);
+    // TaskHandle_t task_handle;
+    // uint cell_count_delay = 15000;
+    // cell_count_parameters_t cell_count_parameters = {cell_count_delay, parameter.voltage, parameter.cell_count};
+    // xTaskCreate(cell_count_task, "cell_count_task", STACK_CELL_COUNT, (void *)&cell_count_parameters, 1, &task_handle);
+    // xQueueSendToBack(tasks_queue_handle, task_handle, 0);
 
     // float current_offset = 0;
     // uint current_delay = 15000;
@@ -52,8 +52,8 @@ void esc_hw4_task(void *parameters)
     // xQueueSendToBack(tasks_queue_handle, task_handle, 0);
 
    // uart_pio_begin(19200, UART_ESC_RX, ESC_HW4_TIMEOUT_US, pio0, PIO0_IRQ_1);
-   // uart1_begin(19200, UART1_TX_GPIO, UART_ESC_RX, ESC_HW4_TIMEOUT_US, 8, 1, UART_PARITY_NONE, false);
-    uart1_begin(115200, 8, 9, ESC_HW4_TIMEOUT_US, 8, 1, UART_PARITY_NONE, false);
+    uart1_begin(115200, UART1_TX_GPIO, UART_ESC_RX, ESC_HW4_TIMEOUT_US, 8, 1, UART_PARITY_NONE, false);
+    //uart1_begin(115200, 8, 9, ESC_HW4_TIMEOUT_US, 8, 1, UART_PARITY_NONE, false);
 
     while (1)
     {
@@ -131,6 +131,8 @@ static void checkFrameTimeout(uint32_t currentTimeUs, int32_t timeout)
     // Increment data age counter if no updates
     if (cmpTimeUs(currentTimeUs, dataUpdateUs) > timeout) {
         dataUpdateUs = currentTimeUs;
+
+        led_color = BLUE;
     }
 }
 
@@ -147,8 +149,6 @@ static void updateConsumption(uint32_t currentTimeUs)
 
     // Save update time
     consumptionUpdateUs = currentTimeUs;
-
-    // escSensorData[0].consumption = totalConsumption;
 }
 
 
@@ -177,47 +177,6 @@ static void process(esc_hw4_parameters_t *parameter)
 
                 setConsumptionCurrent(current * 0.1f);
 
-                printf("Voltage ");
-                printf("%.2f" , voltage * 0.1);
-                printf("\n");
-
-                printf("Current ");
-                printf("%.2f" , current * 1.0);
-                printf("\n");
-
-                printf("Temp FET ");
-                printf("%.2f" , tempFET * 1.0);
-                printf("\n");
-                
-                printf("Temp BEC ");
-                printf("%.2f" , tempBEC * 1.0);
-                printf("\n");
-
-                // printf("Voltage BEC ");
-                // printf("%.2f" , voltageBEC * 1.0);
-                // printf("\n");
-                printf("\n");
-                // escSensorData[0].age = 0;
-                // escSensorData[0].erpm = rpm * 10;
-                // escSensorData[0].pwm = power * 10;
-                // escSensorData[0].voltage = voltage * 100;
-                // escSensorData[0].current = current * 100;
-                // escSensorData[0].temperature = tempFET * 10;
-                // escSensorData[0].temperature2 = tempBEC * 10;
-
-                // DEBUG(ESC_SENSOR, DEBUG_ESC_1_RPM, rpm * 10);
-                // DEBUG(ESC_SENSOR, DEBUG_ESC_1_TEMP, tempFET * 10);
-                // DEBUG(ESC_SENSOR, DEBUG_ESC_1_VOLTAGE, voltage * 10);
-                // DEBUG(ESC_SENSOR, DEBUG_ESC_1_CURRENT, current * 10);
-
-                // DEBUG(ESC_SENSOR_DATA, DEBUG_DATA_RPM, rpm);
-                // DEBUG(ESC_SENSOR_DATA, DEBUG_DATA_PWM, power);
-                // DEBUG(ESC_SENSOR_DATA, DEBUG_DATA_TEMP, tempFET);
-                // DEBUG(ESC_SENSOR_DATA, DEBUG_DATA_VOLTAGE, voltage);
-                // DEBUG(ESC_SENSOR_DATA, DEBUG_DATA_CURRENT, current);
-                // DEBUG(ESC_SENSOR_DATA, DEBUG_DATA_EXTRA, tempBEC);
-                // DEBUG(ESC_SENSOR_DATA, DEBUG_DATA_AGE, 0);
-
                 *parameter->rpm = (rpm * 10.0) / MOTOR_POLE_DIVISION;
                 *parameter->consumption = totalConsumption;
                 *parameter->voltage = voltage * 0.1;
@@ -228,6 +187,8 @@ static void process(esc_hw4_parameters_t *parameter)
                 *parameter->pwm_percentage = power * 1.0;
 
                 dataUpdateUs = currentTimeUs;
+
+                led_color = VIOLET;
             }
         }
     }
@@ -238,75 +199,3 @@ static void process(esc_hw4_parameters_t *parameter)
     // Maximum frame spacing 400ms
     checkFrameTimeout(currentTimeUs, 500000);
 }
-
-
-// static void process(esc_hw4_parameters_t *parameter, float *current_offset)
-// {
-//     uint16_t pwm, throttle;
-//     static uint32_t timestamp = 0;
-
-//     hw5SensorProcess();
-//     // uint8_t lenght = uart1_available();
-
-
-//     //  if (lenght > 0)
-//     //  {
-//     //     uint8_t test = uart1_read();
-        
-//     //     if (test != 0xFA)
-//     //     {
-//     //         printf("%X ", test);  
-//     //     }
-//     //     else
-//     //     {
-//     //         printf("\n");
-//     //     }
-
-//     //  }
-
-    
-//     // if (lenght == ESC_HW4_PACKET_LENGHT || lenght == ESC_HW4_PACKET_LENGHT + 1)
-//     // {
-//     //     uint8_t data[ESC_HW4_PACKET_LENGHT];
-//     //     uart1_read_bytes(data, ESC_HW4_PACKET_LENGHT);
-//     //     //uart_pio_read_bytes(data, ESC_HW4_PACKET_LENGHT);
-//     //     throttle = (uint16_t)data[4] << 8 | data[5]; // 0-1024
-//     //     pwm = (uint16_t)data[6] << 8 | data[7];      // 0-1024
-//     //     float rpm = (uint32_t)data[8] << 16 | (uint16_t)data[9] << 8 | data[10];
-//     //     // try to filter invalid data frames
-//     //     if (throttle < 1024 &&
-//     //         pwm < 1024 &&
-//     //         rpm < 200000 &&
-//     //         data[11] < 0xF &&
-//     //         data[13] < 0xF &&
-//     //         data[15] < 0xF &&
-//     //         data[17] < 0xF)
-//     //     {
-//     //         uint16_t current_raw = (uint16_t)data[13] << 8 | data[14];
-//     //         float voltage = get_voltage((uint16_t)data[11] << 8 | data[12], parameter);
-//     //         float current = 0;
-//     //         if (throttle > parameter->current_thresold / 100.0 * 1024)
-//     //             current = get_current(current_raw, *current_offset, parameter);
-//     //         if (current > parameter->current_max)
-//     //             current = 0;
-//     //         float temperature_fet = get_temperature((uint16_t)data[15] << 8 | data[16]);
-//     //         float temperature_bec = get_temperature((uint16_t)data[17] << 8 | data[18]);
-//     //         rpm *= parameter->rpm_multiplier;
-//     //         if (parameter->pwm_out)
-//     //             xTaskNotifyGive(pwm_out_task_handle);
-//     //         *parameter->rpm = get_average(parameter->alpha_rpm, *parameter->rpm, rpm);
-//     //         *parameter->consumption += get_consumption(*parameter->current, parameter->current_max, &timestamp);
-//     //         *parameter->voltage = get_average(parameter->alpha_voltage, *parameter->voltage, voltage);
-//     //         *parameter->current = get_average(parameter->alpha_current, *parameter->current, current);
-//     //         *parameter->temperature_fet = get_average(parameter->alpha_temperature, *parameter->temperature_fet, temperature_fet);
-//     //         *parameter->temperature_bec = get_average(parameter->alpha_temperature, *parameter->temperature_bec, temperature_bec);
-//     //         *parameter->cell_voltage = *parameter->voltage / *parameter->cell_count;
-//     //         *parameter->pwm_percentage = get_pwm_percentage(pwm);
-//     //         if (debug)
-//     //         {
-//     //             uint32_t packet = (uint32_t)data[1] << 16 | (uint16_t)data[2] << 8 | data[3];
-//     //             printf("\nEsc HW4 (%u) < Packet: %i Rpm: %.0f Volt: %0.2f Curr: %.2f TempFet: %.0f TempBec: %.0f Cons: %.0f CellV: %.2f", uxTaskGetStackHighWaterMark(NULL), packet, *parameter->rpm, *parameter->voltage, *parameter->current, *parameter->temperature_fet, *parameter->temperature_bec, *parameter->consumption, *parameter->cell_voltage);
-//     //         }
-//     //     }
-//     // }
-// }

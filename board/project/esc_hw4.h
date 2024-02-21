@@ -14,6 +14,7 @@
 #include "config.h"
 
 #include "uart_pio.h"
+#include "led.h"
 
 #define ESC_HW4_TIMEOUT_US 2000
 #define ESC_HW4_PACKET_LENGHT 19

@@ -48,8 +48,8 @@ static void process()
                 packet_id = data[24] >> 4;
                 add_alarm_in_us(SBUS_SLOT_0_DELAY /*- uart0_get_time_elapsed()*/, send_slot_callback, NULL, true);
 
-                // vTaskResume(led_task_handle);
-                //  printf("\nTE: %u", uart0_get_time_elapsed());
+                /* added for visual */
+                vTaskResume(led_task_handle);
                 if (debug)
                     printf("\nSbus (%u) > ", uxTaskGetStackHighWaterMark(NULL));
             }
