@@ -14,6 +14,7 @@
 #include "config.h"
 
 #include "uart_pio.h"
+#include "led.h"
 
 #define ESC_HW4_TIMEOUT_US 2000
 #define ESC_HW4_PACKET_LENGHT 19
@@ -56,7 +57,7 @@ typedef struct esc_hw4_parameters_t
     bool pwm_out;
     float alpha_rpm, alpha_voltage, alpha_current, alpha_temperature;
     float divisor, ampgain, current_thresold, current_max;
-    float *rpm, *voltage, *current, *temperature_fet, *temperature_bec, *cell_voltage, *consumption;
+    float *rpm, *voltage, *current, *temperature_fet, *temperature_bec, *cell_voltage, *consumption, *pwm_percentage;
     uint8_t *cell_count;
 } esc_hw4_parameters_t;
 

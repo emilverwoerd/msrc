@@ -2,6 +2,7 @@
 
 uint16_t led_cycle_duration = 500;
 uint8_t led_cycles = 1;
+eLedColor led_color = GREEN;
 
 void led_task()
 {
@@ -15,16 +16,30 @@ void led_task()
         for (uint8_t i = led_cycles; i > 0; i--)
         {
             gpio_put(PICO_DEFAULT_LED_PIN, 1);
-            put_pixel_rgb(0, 0, 100);
+
+            if (led_color == GREEN)
+            {
+                put_pixel_rgb(100, 0, 0);
+                
+            }
+            if (led_color == BLUE)
+            {
+                put_pixel_rgb(0, 0, 100);
+            }
+            if (led_color == VIOLET)
+            {
+                put_pixel_rgb(0, 127, 255);
+            }
+            if (led_color == RED)
+            {
+                put_pixel_rgb(0, 100, 0);
+            }
+            
             vTaskDelay(led_cycle_duration / 2 / portTICK_PERIOD_MS);
             gpio_put(PICO_DEFAULT_LED_PIN, 0);
             put_pixel_rgb(0, 0, 0);
             vTaskDelay(led_cycle_duration / 2 / portTICK_PERIOD_MS);
-        }
-        if (debug)
-        {
-            //printf("\nLed blink (%u): %u %u", uxTaskGetStackHighWaterMark(NULL), led_cycles, led_cycle_duration);
-        }
+        }       
         vTaskSuspend(NULL);
     }
 }

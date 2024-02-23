@@ -30,10 +30,11 @@ int main()
 
     tasks_queue_handle = xQueueCreate(64, sizeof(QueueHandle_t));
 
-    led_cycle_duration = 200;
-    led_cycles = 3;
-    xTaskCreate(led_task, "led_task", STACK_LED, NULL, 1, &led_task_handle);
+    led_cycle_duration = 1000;
+    led_cycles = 10;
+    led_color = GREEN;
 
+    xTaskCreate(led_task, "led_task", STACK_LED, NULL, 1, &led_task_handle);
     xTaskCreate(usb_task, "usb_task", STACK_USB, NULL, 1, &usb_task_handle);
 
     switch (config->rx_protocol)
