@@ -13,7 +13,6 @@
 #include "common.h"
 #include "config.h"
 
-#include "uart_pio.h"
 #include "led.h"
 
 #define ESC_HW4_TIMEOUT_US 2000
@@ -71,6 +70,6 @@ extern TaskHandle_t pwm_out_task_handle, receiver_task_handle;
 extern QueueHandle_t tasks_queue_handle;
 extern uint8_t debug;
 
-void esc_hw4_task(void *parameters);
+void esc_hw5_task(void *parameters);
 
 #endif

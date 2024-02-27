@@ -1,4 +1,4 @@
-#include "esc_hw4.h"
+#include "esc_hw5.h"
 
 static void process(esc_hw4_parameters_t *parameter);
 
@@ -16,7 +16,7 @@ static float consumptionDelta = 0.0f;
 static float totalConsumption = 0.0f;
 
 
-void esc_hw4_task(void *parameters)
+void esc_hw5_task(void *parameters)
 {
     esc_hw4_parameters_t parameter = *(esc_hw4_parameters_t *)parameters;
     *parameter.rpm = 0;
@@ -50,10 +50,8 @@ void esc_hw4_task(void *parameters)
     // auto_offset_parameters_t current_offset_parameters = {current_delay, parameter.current, &current_offset};
     // xTaskCreate(auto_offset_task, "esc_hw4_current_offset_task", STACK_AUTO_OFFSET, (void *)&current_offset_parameters, 1, &task_handle);
     // xQueueSendToBack(tasks_queue_handle, task_handle, 0);
-
-   // uart_pio_begin(19200, UART_ESC_RX, ESC_HW4_TIMEOUT_US, pio0, PIO0_IRQ_1);
+   
     uart1_begin(115200, UART1_TX_GPIO, UART_ESC_RX, ESC_HW4_TIMEOUT_US, 8, 1, UART_PARITY_NONE, false);
-    //uart1_begin(115200, 8, 9, ESC_HW4_TIMEOUT_US, 8, 1, UART_PARITY_NONE, false);
 
     while (1)
     {
