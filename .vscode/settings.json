@@ -6,7 +6,6 @@
         "type_traits": "c",
         "config.h": "c",
         "frsky_d.h": "c",
-        "ibus.h": "c",
         "sbus.h": "c",
         "bmp280.h": "c",
         "esc_apd_hv.h": "c",
@@ -26,7 +25,6 @@
         "utility": "c",
         "string_view": "c",
         "string": "c",
-        "sim_rx.h": "c",
         "random": "c",
         "ranges": "c"
     },

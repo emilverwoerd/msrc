@@ -33,16 +33,7 @@
 #define I2C1_ADDRESS 0x77  // 0x76 (BMP280), 0x77 (BMP180, MS5611)
 /* Pwm out */
 #define ENABLE_PWM_OUT false
-/* Refresh rate in ms (only Frsky) */
-#define REFRESH_RATE_RPM 1000
-#define REFRESH_RATE_VOLTAGE 1000
-#define REFRESH_RATE_CURRENT 1000
-#define REFRESH_RATE_TEMPERATURE 1000
-#define REFRESH_RATE_GPS 1000
-#define REFRESH_RATE_CONSUMPTION 1000
-#define REFRESH_RATE_VARIO 1000
-#define REFRESH_RATE_AIRSPEED 1000
-#define REFRESH_RATE_DEFAULT 1000
+
 /* Averaging elements (1 = no averaging) */
 #define AVERAGING_ELEMENTS_RPM 1
 #define AVERAGING_ELEMENTS_VOLTAGE 1
@@ -73,19 +64,6 @@
 #define VARIO_AUTO_OFFSET false
 #define BMP280_FILTER 3 // BMP Filter. Higher filter = lower noise: 1 - low, 2 - medium, 3 - high 
 
-/* Only smartport and opentx */
-#define SMARTPORT_SENSOR_ID 18   // Sensor Id
-#define SMARTPORT_DATA_ID 0x5000 // DataId (sensor type)
-
-/* Ibus */
-#define IBUS_GPS_ALTERNATIVE_COORDINATES false
-
-/* XBus */
-#define XBUS_CLOCK_STRECH_SWITCH false
-
-/* Jeti Ex */
-#define JETI_GPS_SPEED_UNITS_KMH true
-
 /* Add init delay for FlyFun ESC. Enable if the ESC doesn't arm */
 #define ENABLE_ESC_INIT_DELAY false
 #define ESC_INIT_DELAY_DURATION 10000
@@ -103,9 +81,6 @@
 */
 
 #define MSRC_DEBUG 0  // 0 = no debug, 1 = debug level 1, 2 = debug level 2
-
-//#define SIM_RX
-// #define SIM_SENSORS
 
 //#define SBUS_HOBBYWING_SENSOR
 #define SBUS_HOBBYWING_SENSOR

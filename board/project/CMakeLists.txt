@@ -4,7 +4,6 @@ add_executable(${PROJECT_NAME}
         uart.c
         common.c
         voltage.c
-        ibus.c
         led.c
         esc_hw4.c
         current.c
@@ -23,14 +22,7 @@ add_executable(${PROJECT_NAME}
         bmp180.c
         cell_count.c
         auto_offset.c
-        frsky_d.c
-        multiplex.c
-        smartport.c
-        jetiex.c
-        sbus.c
-        hitec.c
-        xbus.c
-        sim_rx.c
+        sbus.c       
         capture_edge.c
         i2c_multi.c
         uart_rx.c
@@ -38,7 +30,6 @@ add_executable(${PROJECT_NAME}
         esc_castle.c
         usb.c
         castle_link.c
-        srxl.c
         pwm_out.c
         ws2812.c
 )
