@@ -1,9 +1,8 @@
 #include "esc_hw5.h"
 
-static void process(esc_hw4_parameters_t *parameter);
+static void process(esc_hw5_parameters_t *parameter);
 
 #define TELEMETRY_BUFFER_SIZE    40
-#define MOTOR_POLE_DIVISION      5
 
 static uint8_t buffer[TELEMETRY_BUFFER_SIZE] = { 0, };
 static uint8_t  readBytes = 0;
@@ -18,7 +17,7 @@ static float totalConsumption = 0.0f;
 
 void esc_hw5_task(void *parameters)
 {
-    esc_hw4_parameters_t parameter = *(esc_hw4_parameters_t *)parameters;
+    esc_hw5_parameters_t parameter = *(esc_hw5_parameters_t *)parameters;
     *parameter.rpm = 0;
     *parameter.voltage = 0;
     *parameter.current = 0;
@@ -39,6 +38,7 @@ void esc_hw5_task(void *parameters)
     *parameter.cell_voltage = 3.75;
     *parameter.pwm_percentage = 94.1;
 #endif
+    
     // TaskHandle_t task_handle;
     // uint cell_count_delay = 15000;
     // cell_count_parameters_t cell_count_parameters = {cell_count_delay, parameter.voltage, parameter.cell_count};
@@ -51,7 +51,7 @@ void esc_hw5_task(void *parameters)
     // xTaskCreate(auto_offset_task, "esc_hw4_current_offset_task", STACK_AUTO_OFFSET, (void *)&current_offset_parameters, 1, &task_handle);
     // xQueueSendToBack(tasks_queue_handle, task_handle, 0);
    
-    uart1_begin(115200, UART1_TX_GPIO, UART_ESC_RX, ESC_HW4_TIMEOUT_US, 8, 1, UART_PARITY_NONE, false);
+    uart1_begin(115200, UART1_TX_GPIO, UART_ESC_RX, ESC_HW5_TIMEOUT_US, 8, 1, UART_PARITY_NONE, false);
 
     while (1)
     {
@@ -140,17 +140,17 @@ static void setConsumptionCurrent(float current)
     consumptionDelta = current * (1000.0f / 3600e6f);
 }
 
-static void updateConsumption(uint32_t currentTimeUs)
+static void updateConsumption(uint32_t currentTimeUs, float alphaCurrent)
 {
     // Increment consumption
-    totalConsumption += cmpTimeUs(currentTimeUs, consumptionUpdateUs) * consumptionDelta;
+    totalConsumption += (cmpTimeUs(currentTimeUs, consumptionUpdateUs) * consumptionDelta) * alphaCurrent;
 
     // Save update time
     consumptionUpdateUs = currentTimeUs;
 }
 
 
-static void process(esc_hw4_parameters_t *parameter)
+static void process(esc_hw5_parameters_t *parameter)
 {
     uint32_t currentTimeUs = time_us_32();
 
@@ -175,7 +175,7 @@ static void process(esc_hw4_parameters_t *parameter)
 
                 setConsumptionCurrent(current * 0.1f);
 
-                *parameter->rpm = (rpm * 10.0) / MOTOR_POLE_DIVISION;
+                *parameter->rpm = (rpm * 10.0) / parameter->pairOfPoles;
                 *parameter->consumption = totalConsumption;
                 *parameter->voltage = voltage * 0.1;
                 *parameter->current = current * 0.1;;
@@ -192,7 +192,7 @@ static void process(esc_hw4_parameters_t *parameter)
     }
 
     // Update consumption on every cycle
-    updateConsumption(currentTimeUs);
+    updateConsumption(currentTimeUs, parameter->alpha_current);
 
     // Maximum frame spacing 400ms
     checkFrameTimeout(currentTimeUs, 500000);

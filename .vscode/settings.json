@@ -3,6 +3,7 @@
     // that you debug using cortex-debug instead of trying to launch
     // a Pico binary on the host
     "files.associations": {
+        "*.yaml": "azure-pipelines",
         "type_traits": "c",
         "config.h": "c",
         "frsky_d.h": "c",
@@ -26,7 +27,8 @@
         "string_view": "c",
         "string": "c",
         "random": "c",
-        "ranges": "c"
+        "ranges": "c",
+        "cell_count.h": "c"
     },
     "cmake.statusbar.advanced": {
         "debug": {
