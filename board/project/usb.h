@@ -7,6 +7,7 @@
 #include "pico/stdlib.h"
 #include <queue.h>
 #include "config.h"
+#include "led.h"
 #include "constants.h"
 
 #define USB_BUFFER_LENGTH 256

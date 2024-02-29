@@ -3,6 +3,7 @@
 uint16_t led_cycle_duration = 500;
 uint8_t led_cycles = 1;
 eLedColor led_color = GREEN;
+bool led_repeat = false;
 
 void led_task()
 {
@@ -39,7 +40,10 @@ void led_task()
             gpio_put(PICO_DEFAULT_LED_PIN, 0);
             put_pixel_rgb(0, 0, 0);
             vTaskDelay(led_cycle_duration / 2 / portTICK_PERIOD_MS);
-        }       
-        vTaskSuspend(NULL);
+        }    
+
+        if (!led_repeat)   {
+            vTaskSuspend(NULL);
+        }
     }
 }

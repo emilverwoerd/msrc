@@ -177,8 +177,8 @@ static void process(esc_hw5_parameters_t *parameter)
 
                 *parameter->rpm = (rpm * 10.0) / parameter->pairOfPoles;
                 *parameter->consumption = totalConsumption;
-                *parameter->voltage = voltage * 0.1;
-                *parameter->current = current * 0.1;;
+                *parameter->voltage = voltage * 1.0;
+                *parameter->current = current * 1.0;;
                 *parameter->temperature_fet = tempFET * 1.0;
                 *parameter->temperature_bec = 0;
                 *parameter->cell_voltage = *parameter->voltage / *parameter->cell_count;
@@ -187,6 +187,7 @@ static void process(esc_hw5_parameters_t *parameter)
                 dataUpdateUs = currentTimeUs;
 
                 led_color = VIOLET;
+                led_repeat = false;
             }
         }
     }

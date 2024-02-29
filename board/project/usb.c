@@ -37,6 +37,8 @@ static void process_usb(int lenght)
 
     if (buffer_rx[0] == 0x30)
     {
+        led_color = RED;
+
         if (buffer_rx[1] == 0x30 && lenght == sizeof(config_t) + 2)
         { // read config from usb, write to flash and reboot
 

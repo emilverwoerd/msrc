@@ -15,6 +15,8 @@ void sbus_task(void *parameters)
 {
     led_cycle_duration = 6;
     led_cycles = 1;
+    led_color = GREEN;
+    led_repeat = true;
 
     set_config();
     uart0_begin(100000, UART_RECEIVER_TX, UART_RECEIVER_RX, SBUS_TIMEOUT_US, 8, 2, UART_PARITY_EVEN, true);
@@ -132,11 +134,11 @@ static uint16_t format(uint8_t data_id, float value)
 // Hobbywing SENSOR
     if (data_id == FASST_HW_CURR)
     {
-        return __builtin_bswap16((uint16_t)round(value * 100));
+        return __builtin_bswap16((uint16_t)round(value * 10));
     }
     if (data_id == FASST_HW_VOLT)
     {
-        return __builtin_bswap16((uint16_t)round(value * 100));
+        return __builtin_bswap16((uint16_t)round(value * 10));
     }
     if (data_id == FASST_HW_CONS)
     {
@@ -385,9 +387,7 @@ static void set_config(sensor_sbus_t *sensor[])
         // new_sensor = malloc(sizeof(sensor_sbus_t));
         //*new_sensor = (sensor_sbus_t){AFHDS2A_ID_CELL_VOLTAGE, parameter.cell_voltage};
         // add_sensor(new_sensor);
-
 #endif
-    }
-   
-    
+
+    }    
 }
