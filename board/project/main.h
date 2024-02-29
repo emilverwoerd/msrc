@@ -6,16 +6,8 @@
 
 #include "config.h"
 #include "led.h"
-#include "ibus.h"
-#include "frsky_d.h"
-#include "multiplex.h"
-#include "smartport.h"
-#include "jetiex.h"
+
 #include "sbus.h"
-#include "hitec.h"
-#include "xbus.h"
-#include "srxl.h"
-#include "sim_rx.h"
 #include "usb.h"
 
 extern uint16_t led_cycle_duration;

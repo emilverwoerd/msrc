@@ -8,22 +8,7 @@
 
 #include "common.h"
 #include "uart.h"
-#include "esc_hw3.h"
-#include "esc_hw4.h"
-#include "voltage.h"
-#include "current.h"
-#include "ntc.h"
-#include "airspeed.h"
-#include "esc_kontronik.h"
-#include "esc_apd_f.h"
-#include "esc_apd_hv.h"
-#include "esc_castle.h"
-#include "nmea.h"
-#include "esc_pwm.h"
-#include "bmp280.h"
-#include "ms5611.h"
-#include "bmp180.h"
-#include "pwm_out.h"
+#include "esc_hw5.h"
 
 /* FASST Sbus Data Id */
 #define FASST_NULL 0

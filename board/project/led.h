@@ -22,6 +22,7 @@ typedef enum
 extern uint16_t led_cycle_duration;
 extern uint8_t led_cycles;
 extern eLedColor led_color;
+extern bool led_repeat;
 
 extern uint8_t debug;
 
