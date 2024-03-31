@@ -48,10 +48,8 @@ static void process()
             if (data[24] == 0x04 || data[24] == 0x14 || data[24] == 0x24 || data[24] == 0x34)
             {
                 packet_id = data[24] >> 4;
-                add_alarm_in_us(SBUS_SLOT_0_DELAY /*- uart0_get_time_elapsed()*/, send_slot_callback, NULL, true);
+                add_alarm_in_us(SBUS_SLOT_0_DELAY - uart0_get_time_elapsed(), send_slot_callback, NULL, true);
 
-                /* added for visual */
-                vTaskResume(led_task_handle);
                 if (debug)
                     printf("\nSbus (%u) > ", uxTaskGetStackHighWaterMark(NULL));
             }
@@ -70,20 +68,13 @@ static int64_t send_slot_callback(alarm_id_t id, void *parameters)
         return SBUS_INTER_SLOT_DELAY;
     }
     index = 0;
+
+    vTaskResume(led_task_handle);
     return 0;
 }
 
 static inline void send_slot(uint8_t slot)
-{
-    if (debug == 2)
-    {
-        static uint32_t timestamp;
-        if (slot == 0 || slot == 8 || slot == 16 || slot == 24)
-            printf(" %u", uart0_get_time_elapsed());
-        else
-            printf(" %u", time_us_32() - timestamp);
-        timestamp = time_us_32();
-    }
+{    
     if (debug)
         printf(" (%u)", slot);
     uint16_t value = 0;
@@ -217,24 +208,27 @@ static uint16_t format(uint8_t data_id, float value)
     {
         return __builtin_bswap16((int16_t)round(value) | 0x4000);
     }
-    if (data_id == FASST_GPS_LATITUDE1 || data_id == FASST_GPS_LONGITUDE1)
+   if (data_id == FASST_GPS_LATITUDE1 || data_id == FASST_GPS_LONGITUDE1)
     {
-        // FFFF = (deg,deg,S/W,min) -> min *10000 (prec 4)
-        uint16_t lat;
+        // bits 1-4: bits 17-20 from minutes precision 4 (minutes*10000 = 20 bits)
+        // bit 5: S/W bit
+        // bits 9-16: degrees
+        uint16_t lat_lon = 0;
         if (value < 0)
         {
-            lat = 1 << FASST_SOUTH_WEST_BIT;
-            value *= -1;
+            lat_lon = 1 << FASST_SOUTH_WEST_BIT;
+            value *= -1; 
         }
+        
         uint8_t degrees = value / 60;
-        lat |= degrees << 8;
+        lat_lon |= degrees << 8;
         uint32_t minutes = fmod(value, 60) * 10000; // minutes precision 4
-        lat |= minutes >> 16;
-        return __builtin_bswap16(lat);
+        lat_lon |= minutes >> 16;
+        return __builtin_bswap16(lat_lon);
     }
     if (data_id == FASST_GPS_LATITUDE2 || data_id == FASST_GPS_LONGITUDE2)
     {
-        // FFFF = (min) -> min *10000 (prec 4)
+        // bits 1-16 from minutes precision 4 (minutes*10000 = 20 bits)
         if (value < 0)
         {
             value *= -1;
