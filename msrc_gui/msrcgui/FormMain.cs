@@ -36,7 +36,7 @@ namespace msrcgui
 
         private void btnSave_Click(object sender, EventArgs e)
         {
-           SaveConfiguration();
+            SaveConfiguration();
         }
 
         private void LoadConfiguration()
@@ -59,7 +59,7 @@ namespace msrcgui
                     nudAlphaCurrent.Value = (decimal)config.AlphaCurrent;
 
                     gbEscConfiguration.Enabled = true;
-                   
+
                     _serialPort.Close();
                     DisplayStatusMessage("Config loaded from device");
 
@@ -74,12 +74,12 @@ namespace msrcgui
         private void SaveConfiguration()
         {
             var config = new ConfigBuilder()
-                .MetEscProtocol((ushort)cbEscSelection.SelectedIndex)
-                .MetPairOfPoles((byte)nudPairOfPoles.Value)
-                .MetAlphaCurrent((float) nudAlphaCurrent.Value)
+                .WithEscProtocol((ushort)cbEscSelection.SelectedIndex)
+                .WithPairOfPoles((byte)nudPairOfPoles.Value)
+                .WithAlphaCurrent((float)nudAlphaCurrent.Value)
                 .Build();
 
-            var buffer  = GetBytesFromConfig(config);
+            var buffer = GetBytesFromConfig(config);
 
             _serialPort = GetSerialPort();
             _serialPort.Write([.. write_config, .. buffer], 0, buffer.Length + 2);

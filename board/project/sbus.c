@@ -97,27 +97,27 @@ static uint16_t format(uint8_t data_id, float value)
 {
 
 // SCORPION SENSOR
-    if (data_id == FASST_SCOR_VOLT)
+    if (data_id == FASST_SCORP_VOLT)
     {
         return __builtin_bswap16((uint16_t)round(value * 100) | 0x8000);
     }
-    if (data_id == FASST_SCOR_CURR)
+    if (data_id == FASST_SCORP_CURR)
     {
         return __builtin_bswap16((uint16_t)round(value * 100));
     }
-    if (data_id == FASST_SCOR_CONS)
+    if (data_id == FASST_SCORP_CONS)
     {
         return __builtin_bswap16((uint16_t)round(value * 10));
     }
-    if (data_id == FASST_SCOR_RPM)
+    if (data_id == FASST_SCORP_RPM)
     {
         return __builtin_bswap16((uint16_t)round(value / 6));
     }
-    if (data_id == FASST_SCOR_TEMP)
+    if (data_id == FASST_SCORP_TEMP)
     {
         return __builtin_bswap16((uint16_t)round(value));
     }
-    if (data_id == FASST_SCOR_PWM)
+    if (data_id == FASST_SCORP_PWM)
     {
         return __builtin_bswap16((uint16_t)round(value));
     }
@@ -269,6 +269,52 @@ static void set_config(sensor_sbus_t *sensor[])
     sensor_sbus_t *new_sensor;
  
    
+    if (config->esc_protocol == ESC_SCORPION)
+    {
+        esc_scorp_parameters_t parameter = {malloc(sizeof(float)), malloc(sizeof(float)), malloc(sizeof(float)), malloc(sizeof(float)), malloc(sizeof(float)), malloc(sizeof(float)), malloc(sizeof(uint16_t))};
+        xTaskCreate(esc_scorp_task, "esc_scorp_task", STACK_ESC_SCORP, (void *)&parameter, 2, &task_handle);
+        uart1_notify_task_handle = task_handle;
+        xQueueSendToBack(tasks_queue_handle, task_handle, 0);
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        
+        // SCORPION SENSOR
+        new_sensor = malloc(sizeof(sensor_sbus_t));
+        *new_sensor = (sensor_sbus_t){FASST_SCORP_VOLT, parameter.voltage};
+        add_sensor(SBUS_SLOT_SCORP_POWER_VOLT, new_sensor);
+
+        new_sensor = malloc(sizeof(sensor_sbus_t));
+        *new_sensor = (sensor_sbus_t){FASST_SCORP_CONS, parameter.consumption};
+        add_sensor(SBUS_SLOT_SCORP_POWER_CONS, new_sensor);
+
+        new_sensor = malloc(sizeof(sensor_sbus_t));
+        *new_sensor = (sensor_sbus_t){FASST_SCORP_RPM, parameter.rpm};
+        add_sensor(SBUS_SLOT_SCORP_RPM, new_sensor);
+
+        new_sensor = malloc(sizeof(sensor_sbus_t));
+        *new_sensor = (sensor_sbus_t){FASST_SCORP_CURR, parameter.current};
+        add_sensor(SBUS_SLOT_SCORP_POWER_CURR, new_sensor);
+
+        new_sensor = malloc(sizeof(sensor_sbus_t));
+        *new_sensor = (sensor_sbus_t){FASST_SCORP_TEMP, parameter.temperature};
+        add_sensor(SBUS_SLOT_SCORP_TEMP1, new_sensor);
+
+        // new_sensor = malloc(sizeof(sensor_sbus_t));
+        // *new_sensor = (sensor_sbus_t){FASST_SCORP_TEMP, 0};
+        // add_sensor(SBUS_SLOT_SCORP_TEMP2, new_sensor);
+
+        // new_sensor = malloc(sizeof(sensor_sbus_t));
+        // *new_sensor = (sensor_sbus_t){FASST_SCORP_CURR, 0};
+        // add_sensor(SBUS_SLOT_SCORP_BEC_CURR, new_sensor);
+
+        new_sensor = malloc(sizeof(sensor_sbus_t));
+        *new_sensor = (sensor_sbus_t){FASST_SCORP_PWM, parameter.pwm};
+        add_sensor(SBUS_SLOT_SCORP_PWM, new_sensor);
+
+        new_sensor = malloc(sizeof(sensor_sbus_t));
+        *new_sensor = (sensor_sbus_t){FASST_PWM, parameter.pwm};
+        add_sensor(SBUS_SLOT_PWM, new_sensor);
+    }
+
     if (config->esc_protocol == ESC_HW5)
     {
         esc_hw5_parameters_t parameter = {config->pairOfPoles, config->alpha_current,
@@ -278,8 +324,6 @@ static void set_config(sensor_sbus_t *sensor[])
         xQueueSendToBack(tasks_queue_handle, task_handle, 0);
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-
-#ifdef SBUS_HOBBYWING_SENSOR
         // HOBBYWING SENSOR
         new_sensor = malloc(sizeof(sensor_sbus_t));
         *new_sensor = (sensor_sbus_t){FASST_HW_CURR, parameter.current};
@@ -313,75 +357,37 @@ static void set_config(sensor_sbus_t *sensor[])
         *new_sensor = (sensor_sbus_t){FASST_HW_STATUS, 0};
         add_sensor(SBUS_SLOT_HW_STATUS, new_sensor);
 
-        // SCORPION SENSOR
-        // new_sensor = malloc(sizeof(sensor_sbus_t));
-        // *new_sensor = (sensor_sbus_t){FASST_SCOR_VOLT, parameter.voltage};
-        // add_sensor(SBUS_SLOT_SCOR_POWER_VOLT, new_sensor);
 
-        // new_sensor = malloc(sizeof(sensor_sbus_t));
-        // *new_sensor = (sensor_sbus_t){FASST_SCOR_CONS, parameter.consumption};
-        // add_sensor(SBUS_SLOT_SCOR_POWER_CONS, new_sensor);
+// #ifndef SBUS_HOBBYWING_SENSOR
+//         // LEGACY SENSOR
+//         new_sensor = malloc(sizeof(sensor_sbus_t));
+//         *new_sensor = (sensor_sbus_t){FASST_RPM, parameter.rpm};
+//         add_sensor(SBUS_SLOT_RPM, new_sensor);
+//         new_sensor = malloc(sizeof(sensor_sbus_t));
+//         *new_sensor = (sensor_sbus_t){FASST_POWER_VOLT, parameter.voltage};
+//         add_sensor(SBUS_SLOT_POWER_VOLT1, new_sensor);
+//         new_sensor = malloc(sizeof(sensor_sbus_t));
+//         *new_sensor = (sensor_sbus_t){FASST_POWER_CURR, parameter.current};
+//         add_sensor(SBUS_SLOT_POWER_CURR1, new_sensor);
+//         new_sensor = malloc(sizeof(sensor_sbus_t));
+//         *new_sensor = (sensor_sbus_t){FASST_POWER_CONS, parameter.consumption};
+//         add_sensor(SBUS_SLOT_POWER_CONS1, new_sensor);
+//         new_sensor = malloc(sizeof(sensor_sbus_t));
+//         *new_sensor = (sensor_sbus_t){FASST_TEMP, parameter.temperature_fet};
+//         add_sensor(SBUS_SLOT_TEMP1, new_sensor);
+//         new_sensor = malloc(sizeof(sensor_sbus_t));
+//         *new_sensor = (sensor_sbus_t){FASST_TEMP, parameter.temperature_bec};
+//         add_sensor(SBUS_SLOT_TEMP2, new_sensor);
 
-        // new_sensor = malloc(sizeof(sensor_sbus_t));
-        // *new_sensor = (sensor_sbus_t){FASST_SCOR_RPM, parameter.rpm};
-        // add_sensor(SBUS_SLOT_SCOR_RPM, new_sensor);
-
-        // new_sensor = malloc(sizeof(sensor_sbus_t));
-        // *new_sensor = (sensor_sbus_t){FASST_SCOR_CURR, parameter.current};
-        // add_sensor(SBUS_SLOT_SCOR_POWER_CURR, new_sensor);
-
-        // new_sensor = malloc(sizeof(sensor_sbus_t));
-        // *new_sensor = (sensor_sbus_t){FASST_SCOR_TEMP, parameter.temperature_fet};
-        // add_sensor(SBUS_SLOT_SCOR_TEMP1, new_sensor);
-
-        // new_sensor = malloc(sizeof(sensor_sbus_t));
-        // *new_sensor = (sensor_sbus_t){FASST_SCOR_TEMP, parameter.temperature_bec};
-        // add_sensor(SBUS_SLOT_SCOR_TEMP2, new_sensor);
-
-        // new_sensor = malloc(sizeof(sensor_sbus_t));
-        // *new_sensor = (sensor_sbus_t){FASST_SCOR_CURR, 0};
-        // add_sensor(SBUS_SLOT_SCOR_BEC_CURR, new_sensor);
-
-        // new_sensor = malloc(sizeof(sensor_sbus_t));
-        // *new_sensor = (sensor_sbus_t){FASST_SCOR_PWM, parameter.pwm_percentage};
-        // add_sensor(SBUS_SLOT_SCOR_PWM, new_sensor);
-
-        // // PWM SENSOR
-        // new_sensor = malloc(sizeof(sensor_sbus_t));
-        // *new_sensor = (sensor_sbus_t){FASST_PWM, parameter.pwm_percentage};
-        // add_sensor(SBUS_SLOT_PWM, new_sensor);
-#endif
-
-#ifndef SBUS_HOBBYWING_SENSOR
-        // LEGACY SENSOR
-        new_sensor = malloc(sizeof(sensor_sbus_t));
-        *new_sensor = (sensor_sbus_t){FASST_RPM, parameter.rpm};
-        add_sensor(SBUS_SLOT_RPM, new_sensor);
-        new_sensor = malloc(sizeof(sensor_sbus_t));
-        *new_sensor = (sensor_sbus_t){FASST_POWER_VOLT, parameter.voltage};
-        add_sensor(SBUS_SLOT_POWER_VOLT1, new_sensor);
-        new_sensor = malloc(sizeof(sensor_sbus_t));
-        *new_sensor = (sensor_sbus_t){FASST_POWER_CURR, parameter.current};
-        add_sensor(SBUS_SLOT_POWER_CURR1, new_sensor);
-        new_sensor = malloc(sizeof(sensor_sbus_t));
-        *new_sensor = (sensor_sbus_t){FASST_POWER_CONS, parameter.consumption};
-        add_sensor(SBUS_SLOT_POWER_CONS1, new_sensor);
-        new_sensor = malloc(sizeof(sensor_sbus_t));
-        *new_sensor = (sensor_sbus_t){FASST_TEMP, parameter.temperature_fet};
-        add_sensor(SBUS_SLOT_TEMP1, new_sensor);
-        new_sensor = malloc(sizeof(sensor_sbus_t));
-        *new_sensor = (sensor_sbus_t){FASST_TEMP, parameter.temperature_bec};
-        add_sensor(SBUS_SLOT_TEMP2, new_sensor);
-
-        // PWM SENSOR
-        new_sensor = malloc(sizeof(sensor_sbus_t));
-        *new_sensor = (sensor_sbus_t){FASST_PWM, parameter.pwm_percentage};
-        add_sensor(SBUS_SLOT_PWM, new_sensor);
+//         // PWM SENSOR
+//         new_sensor = malloc(sizeof(sensor_sbus_t));
+//         *new_sensor = (sensor_sbus_t){FASST_PWM, parameter.pwm_percentage};
+//         add_sensor(SBUS_SLOT_PWM, new_sensor);
        
-        // new_sensor = malloc(sizeof(sensor_sbus_t));
-        //*new_sensor = (sensor_sbus_t){AFHDS2A_ID_CELL_VOLTAGE, parameter.cell_voltage};
-        // add_sensor(new_sensor);
-#endif
+//         // new_sensor = malloc(sizeof(sensor_sbus_t));
+//         //*new_sensor = (sensor_sbus_t){AFHDS2A_ID_CELL_VOLTAGE, parameter.cell_voltage};
+//         // add_sensor(new_sensor);
+// #endif
 
     }    
 }

@@ -11,19 +11,19 @@ namespace msrcgui.Builders
         private byte _pairOfPoles = 1;
         private float _alphaCurrent = 1;
 
-        public ConfigBuilder MetEscProtocol(ushort escProtocol)
+        public ConfigBuilder WithEscProtocol(ushort escProtocol)
         {
             _escProtocol = escProtocol;
             return this;
         }
 
-        public ConfigBuilder MetPairOfPoles(byte pairOfPoles)
+        public ConfigBuilder WithPairOfPoles(byte pairOfPoles)
         {
             _pairOfPoles = pairOfPoles;
             return this;
         }
 
-        public ConfigBuilder MetAlphaCurrent(float alphaCurrrent)
+        public ConfigBuilder WithAlphaCurrent(float alphaCurrrent)
         {
             _alphaCurrent = alphaCurrrent;
             return this;
@@ -36,8 +36,7 @@ namespace msrcgui.Builders
              Version = _version,
              EscProtocol = _escProtocol,
              PairOfPoles = _pairOfPoles,
-             AlphaCurrent = _alphaCurrent
+             AlphaCurrent = _alphaCurrent,
          };
-
     }
 }

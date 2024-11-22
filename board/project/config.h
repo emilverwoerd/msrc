@@ -61,7 +61,7 @@
 // #define SIM_SENSORS
 
 //#define SBUS_HOBBYWING_SENSOR
-#define SBUS_HOBBYWING_SENSOR
+//#define SBUS_HOBBYWING_SENSOR
 
 
 // typedef enum rx_protocol_t
@@ -81,6 +81,7 @@ typedef enum esc_protocol_t
 {
     ESC_NONE,
     ESC_HW5,
+    ESC_SCORPION,
 } esc_protocol_t;
 
 

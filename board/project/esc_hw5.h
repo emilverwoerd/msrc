@@ -1,5 +1,5 @@
-#ifndef ESC_HW4_H
-#define ESC_HW4_H
+#ifndef ESC_HW5_H
+#define ESC_HW5_H
 
 #include <FreeRTOS.h>
 #include <task.h>

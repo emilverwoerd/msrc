@@ -4,6 +4,7 @@ add_executable(${PROJECT_NAME}
         common.c
         led.c
         esc_hw5.c
+        esc_scorp.c
         config.c
         cell_count.c
         auto_offset.c
