@@ -271,7 +271,7 @@ static void set_config(sensor_sbus_t *sensor[])
    
     if (config->esc_protocol == ESC_SCORPION)
     {
-        esc_scorp_parameters_t parameter = {malloc(sizeof(float)), malloc(sizeof(float)), malloc(sizeof(float)), malloc(sizeof(float)), malloc(sizeof(float)), malloc(sizeof(float)), malloc(sizeof(uint16_t))};
+        esc_scorp_parameters_t parameter = {malloc(sizeof(float)), malloc(sizeof(float)), malloc(sizeof(float)), malloc(sizeof(float)), malloc(sizeof(float)), malloc(sizeof(float)), malloc(sizeof(float))};
         xTaskCreate(esc_scorp_task, "esc_scorp_task", STACK_ESC_SCORP, (void *)&parameter, 2, &task_handle);
         uart1_notify_task_handle = task_handle;
         xQueueSendToBack(tasks_queue_handle, task_handle, 0);
@@ -297,17 +297,21 @@ static void set_config(sensor_sbus_t *sensor[])
         new_sensor = malloc(sizeof(sensor_sbus_t));
         *new_sensor = (sensor_sbus_t){FASST_SCORP_TEMP, parameter.temperature};
         add_sensor(SBUS_SLOT_SCORP_TEMP1, new_sensor);
-
-        // new_sensor = malloc(sizeof(sensor_sbus_t));
-        // *new_sensor = (sensor_sbus_t){FASST_SCORP_TEMP, 0};
-        // add_sensor(SBUS_SLOT_SCORP_TEMP2, new_sensor);
-
-        // new_sensor = malloc(sizeof(sensor_sbus_t));
-        // *new_sensor = (sensor_sbus_t){FASST_SCORP_CURR, 0};
-        // add_sensor(SBUS_SLOT_SCORP_BEC_CURR, new_sensor);
+        
+        float *temp_value = malloc(sizeof(float));
+        *temp_value = 0.0f;
 
         new_sensor = malloc(sizeof(sensor_sbus_t));
-        *new_sensor = (sensor_sbus_t){FASST_SCORP_PWM, parameter.pwm};
+        *new_sensor = (sensor_sbus_t){FASST_SCORP_TEMP, temp_value};
+        add_sensor(SBUS_SLOT_SCORP_TEMP2, new_sensor);
+
+        new_sensor = malloc(sizeof(sensor_sbus_t));
+        *new_sensor = (sensor_sbus_t){FASST_SCORP_CURR, temp_value};
+        add_sensor(SBUS_SLOT_SCORP_BEC_CURR, new_sensor);
+
+        // Todo add pwm
+        new_sensor = malloc(sizeof(sensor_sbus_t));
+        *new_sensor = (sensor_sbus_t){FASST_SCORP_PWM, temp_value};
         add_sensor(SBUS_SLOT_SCORP_PWM, new_sensor);
 
         new_sensor = malloc(sizeof(sensor_sbus_t));

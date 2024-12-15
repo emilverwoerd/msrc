@@ -10,6 +10,7 @@ static uint32_t syncCount = 0;
 
 static uint32_t dataUpdateUs = 0;
 
+// static uint32_t counter = 0;
 
 void esc_scorp_task(void *parameters)
 {
@@ -23,13 +24,13 @@ void esc_scorp_task(void *parameters)
     *parameter.throttle = 0;
     xTaskNotifyGive(receiver_task_handle);
 #ifdef SIM_SENSORS
-    *parameter.rpm = 22345.67;
+    *parameter.rpm = 1.67;
     *parameter.voltage = 42.34;
     *parameter.consumption = 12.4;    
     *parameter.current = 126.6;
     *parameter.temperature = 3331.34;
     *parameter.throttle = 333.75;
-    *parameter.pwm = 4;
+    *parameter.pwm = 1.0;
 #endif    
    
     uart1_begin(38400, UART1_TX_GPIO, UART_ESC_RX, ESC_SCORP_TIMEOUT_US, 8, 1, UART_PARITY_NONE, false);
@@ -38,6 +39,13 @@ void esc_scorp_task(void *parameters)
     {
         ulTaskNotifyTakeIndexed(1, pdTRUE, portMAX_DELAY);
         process(&parameter);
+        
+        // ulTaskNotifyTakeIndexed(1, pdTRUE, 1000);
+        // counter += 1;
+
+        // *parameter.rpm += counter;
+        // *parameter.pwm += counter;
+        
     }
 }
 
@@ -117,21 +125,21 @@ static void process(esc_scorp_parameters_t *parameter)
              if (calculateCRC16_CCITT(buffer, 20) == crc) {
                 uint16_t rpm = buffer[18] << 8 | buffer[17];
                 uint16_t temp = buffer[14];
-                uint16_t throttle = buffer[7];
-                uint16_t power = buffer[15];
+                uint16_t throttle = (( 0x00 << 8) | buffer[7]) / 2;
+                uint16_t power = (( 0x00 << 8) | buffer[15]) / 2;
                 uint16_t voltage = buffer[11] << 8 | buffer[10];
                 uint16_t current = buffer[9] << 8 | buffer[8];
                 uint16_t capacity = buffer[13] << 8 | buffer[12];
                 uint16_t status = buffer[19];
 
-                *parameter->rpm = rpm * 5.0;
+                *parameter->rpm = rpm * 1.0;
                 *parameter->voltage = voltage * 0.1;
                 *parameter->current = current * 0.1;
                 *parameter->consumption = capacity * 0.01;      
                 *parameter->temperature = temp * 1.0;  
                 
-                *parameter->pwm = power  * 5;
-                *parameter->throttle = throttle  * 5.0;
+                *parameter->pwm = power  * 1.0;
+                *parameter->throttle = throttle  * 1.0;
 
                 dataUpdateUs = currentTimeUs;
 
